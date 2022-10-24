@@ -8,48 +8,51 @@ volumes:
 
 networks:
   monitor-net:
-    name: inbound
+    name: main_network
+
+x-common: 
+  &common
+  networks:
+    - monitor-net
+  restart: on-failure
 
 services:
 
   grafana:
+    <<: *common
     image: grafana/grafana-oss:latest
     container_name: grafana
     ports:
       - "3000:3000"
     volumes:
+      #- ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/provisioning:/etc/grafana/provisioning
       - grafana-data:/var/lib/grafana
-    restart: unless-stopped
-    networks:
-      - monitor-net
 
   prometheus:
+    <<: *common 
     image: prom/prometheus:latest
     container_name: prometheus
     ports:
       - "9090:9090"
-    networks:
-      - monitor-net
     volumes:
-      - /etc/prometheus:/etc/prometheus
+      - ./prometheus/config:/etc/prometheus
       - prometheus-data:/prometheus
-    restart: unless-stopped
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
 
   node_exporter:
+    <<: *common 
     image: quay.io/prometheus/node-exporter:latest
     container_name: node_exporter
     command:
       - '--path.rootfs=/host'
     pid: host
-    restart: unless-stopped
     volumes:
       - '/:/host:ro,rslave'
-    networks:
-      - monitor-net
 
   cadvisor:
+    <<: *common 
     image: gcr.io/cadvisor/cadvisor:v0.45.0 
     container_name: cadvisor
     ports:
@@ -61,13 +64,11 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
-    networks:
-      - monitor-net
     devices:
       - /dev/kmsg
-    restart: unless-stopped
 
   nvidia_exporter: 
+    <<: *common 
     image: nvcr.io/nvidia/k8s/dcgm-exporter:2.3.2-2.6.2-ubuntu20.04
     container_name: nvidia_exporter
     runtime: nvidia
@@ -78,11 +79,9 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=all
     ports:
       - "9400:9400"
-    restart: unless-stopped
-    networks:
-      - monitor-net
 
-  nvidia_smi_exporter: 
+  nvidia_smi_exporter:
+    <<: *common 
     image: utkuozdemir/nvidia_gpu_exporter:0.3.0
     container_name: nvidia_smi_exporter
     runtime: nvidia
@@ -91,10 +90,7 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=all
     ports:
       - "9835:9835"
-    networks:
-      - monitor-net
     volumes:
       - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi
       - /usr/lib/x86_64-linux-gnu/libnvidia-ml.so:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so
       - /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1
-    restart: unless-stopped
