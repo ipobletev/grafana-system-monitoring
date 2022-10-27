@@ -101,13 +101,19 @@ services:
     tty: true
     environment:
       PATH_TF_SERVING: serving/tensorflow_serving/servables/tensorflow/
+      TENSORFLOW_SERVING_ENABLE_MONITORING: 1
       PYTORCH_NO_CUDA_MEMORY_CACHING: 1
       MODEL_NAME: custom_model # Custom Model Name
+    command:
+      - '--monitoring_config_file=/serving/config/monitoring.config'
+      - '--model_config_file=/serving/config/model.config'
     ports:
       - 8500:8500 # Port 8500 exposed for gRPC
       - 8501:8501 # Port 8501 exposed for the REST API
     volumes:
-      - ./serving/tensorflow_serving/servables/tensorflow/testdata/saved_model_half_plus_two_gpu:/models/custom_model
+      - ./serving/tensorflow_serving/servables/tensorflow/testdata:/models/custom_model
+      - ./serving/config:/serving/config
+      #- ./serving_model/saved_model_half_plus_two_gpu:/models/custom_model
     devices:  
       - /dev/nvidia0:/dev/nvidia0
       - /dev/nvidiactl:/dev/nvidiactl
